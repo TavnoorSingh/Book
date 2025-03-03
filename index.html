@@ -3,13 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cricket Weekly Records</title>
+    <title>Cricket Batting Records</title>
     
     <!-- Firebase SDK -->
-<!-- Firebase v8 for full compatibility -->
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     
     <style>
         body {
@@ -22,7 +20,7 @@
             color: #ffd700;
         }
         table {
-            width: 80%;
+            width: 90%;
             margin: 20px auto;
             border-collapse: collapse;
             background: white;
@@ -30,7 +28,7 @@
         }
         th, td {
             border: 1px solid black;
-            padding: 10px;
+            padding: 8px;
             text-align: center;
         }
         th {
@@ -43,7 +41,7 @@
     </style>
 </head>
 <body>
-    <h1>Cricket Weekly Records</h1>
+    <h1>Cricket Batting Records</h1>
     
     <button onclick="showLogin()">Admin Login</button>
     <div id="loginSection" style="display:none;">
@@ -53,46 +51,26 @@
     
     <div class="upload-section" id="adminUpload">
         <form id="uploadForm">
-            <label>Upload Table 1: <input type="file" id="fileInput1" accept=".csv"></label>
-            <button type="button" onclick="uploadData(1)">Upload</button><br>
-            <label>Upload Table 2: <input type="file" id="fileInput2" accept=".csv"></label>
-            <button type="button" onclick="uploadData(2)">Upload</button><br>
-            <label>Upload Table 3: <input type="file" id="fileInput3" accept=".csv"></label>
-            <button type="button" onclick="uploadData(3)">Upload</button>
+            <label>Upload Batting Data: <input type="file" id="fileInput" accept=".csv"></label>
+            <button type="button" onclick="uploadData()">Upload</button>
         </form>
     </div>
     
-    <h2>Table 1</h2>
-    <table id="recordsTable1">
+    <h2>Batting Records</h2>
+    <table id="recordsTable">
         <thead>
             <tr>
-                <th>Name</th>
-                <th>Catch</th>
-                <th>Points</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-
-    <h2>Table 2</h2>
-    <table id="recordsTable2">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Catch</th>
-                <th>Points</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-
-    <h2>Table 3</h2>
-    <table id="recordsTable3">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Catch</th>
-                <th>Points</th>
+                <th>Batsman</th>
+                <th>Runs</th>
+                <th>Balls Faced</th>
+                <th>Sixes</th>
+                <th>Fours</th>
+                <th>Singles</th>
+                <th>Strike Rate</th>
+                <th>Batting Average</th>
+                <th>Dismissals</th>
+                <th>Highest Score</th>
+                <th>Fifties/Hundreds</th>
             </tr>
         </thead>
         <tbody></tbody>
@@ -111,14 +89,13 @@
         };
 
         document.addEventListener("DOMContentLoaded", function () {
-            if (typeof firebase === "undefined") {
-                console.error("Firebase SDK not loaded!");
-                alert("Error: Firebase SDK not loaded. Check your Firebase scripts.");
-                return;
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+                console.log("✅ Firebase connected successfully!");
+            } else {
+                console.warn("⚠️ Firebase already initialized. Skipping re-initialization.");
             }
-
-            firebase.initializeApp(firebaseConfig);
-            console.log("✅ Firebase connected successfully!");
+            window.database = firebase.database();
             loadData();
         });
 
@@ -137,78 +114,69 @@
             }
         }
 
-        function uploadData(tableNumber) {
-        const fileInput = document.getElementById(`fileInput${tableNumber}`);
-        const file = fileInput.files[0];
-
-        if (!file) {
-            alert("⚠️ Please select a file first.");
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = function (event) {
-            const text = event.target.result;
-
-            if (!window.database) {
-                console.error("❌ Firebase database not initialized.");
-                alert("❌ Firebase database is not connected. Try refreshing the page.");
+        function uploadData() {
+            const fileInput = document.getElementById("fileInput");
+            const file = fileInput.files[0];
+            if (!file) {
+                alert("⚠️ Please select a file first.");
                 return;
             }
 
-            window.database.ref(`table${tableNumber}`).set(text)
-                .then(() => {
-                    alert("✅ Data uploaded successfully!");
-                    console.log(`✅ Data uploaded successfully for Table ${tableNumber}`);
-                    loadData();
-                })
-                .catch(error => {
-                    console.error("❌ Error uploading data:", error);
-                    alert("❌ Error uploading data: " + error.message);
-                });
-        };
-
-        reader.readAsText(file);
-    }
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const text = event.target.result;
+                if (!window.database) {
+                    console.error("❌ Firebase database not initialized.");
+                    alert("❌ Firebase database is not connected. Try refreshing the page.");
+                    return;
+                }
+                window.database.ref("battingRecords").set(text)
+                    .then(() => {
+                        alert("✅ Data uploaded successfully!");
+                        loadData();
+                    })
+                    .catch(error => {
+                        console.error("❌ Error uploading data:", error);
+                        alert("❌ Error uploading data: " + error.message);
+                    });
+            };
+            reader.readAsText(file);
+        }
 
         function loadData() {
-            const database = firebase.database();
+            window.database.ref("battingRecords").on("value", (snapshot) => {
+                if (snapshot.exists()) {
+                    parseData(snapshot.val());
+                } else {
+                    console.warn("⚠️ No batting records found");
+                }
+            }, (error) => {
+                console.error("❌ Firebase Read Error:", error);
+            });
+        }
 
-            for (let i = 1; i <= 3; i++) {
-                database.ref(`table${i}`).on("value", (snapshot) => {
-                    if (snapshot.exists()) {
-                        parseData(snapshot.val(), i);
-                    }
-                }, (error) => {
-                    console.error("❌ Firebase Read Error:", error);
-                });
+        function parseData(data) {
+            const rows = data.split("\n");
+            let tableBody = "";
+            for (let i = 1; i < rows.length; i++) {
+                const cols = rows[i].split(",");
+                if (cols.length < 11) continue;
+                tableBody += `<tr>
+                    <td>${cols[0]}</td>
+                    <td>${cols[1]}</td>
+                    <td>${cols[2]}</td>
+                    <td>${cols[3]}</td>
+                    <td>${cols[4]}</td>
+                    <td>${cols[5]}</td>
+                    <td>${cols[6]}</td>
+                    <td>${cols[7]}</td>
+                    <td>${cols[8]}</td>
+                    <td>${cols[9]}</td>
+                    <td>${cols[10]}</td>
+                </tr>`;
             }
+            document.querySelector("#recordsTable tbody").innerHTML = tableBody;
         }
     </script>
 </body>
 </html>
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        if (typeof firebase === "undefined") {
-            console.error("❌ Firebase SDK not loaded!");
-            alert("❌ Error: Firebase SDK not loaded. Check your Firebase scripts.");
-            return;
-        }
-
-        console.log("✅ Firebase SDK loaded successfully.");
-
-        // Prevent duplicate Firebase initialization
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-            console.log("✅ Firebase connected successfully!");
-        } else {
-            console.warn("⚠️ Firebase already initialized. Skipping re-initialization.");
-        }
-
-        // Make Firebase globally accessible
-        window.database = firebase.database();
-
-        loadData(); // Load table data only after Firebase is initialized
-    });
-</script>
-
