@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cricket Weekly Records</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -47,11 +49,11 @@
     <div class="upload-section" id="adminUpload">
         <form id="uploadForm">
             <label>Upload Table 1: <input type="file" id="fileInput1" accept=".csv"></label>
-            <button type="button" onclick="loadFile(1)">Upload</button><br>
+            <button type="button" onclick="uploadData(1)">Upload</button><br>
             <label>Upload Table 2: <input type="file" id="fileInput2" accept=".csv"></label>
-            <button type="button" onclick="loadFile(2)">Upload</button><br>
+            <button type="button" onclick="uploadData(2)">Upload</button><br>
             <label>Upload Table 3: <input type="file" id="fileInput3" accept=".csv"></label>
-            <button type="button" onclick="loadFile(3)">Upload</button>
+            <button type="button" onclick="uploadData(3)">Upload</button>
         </form>
     </div>
     
@@ -92,13 +94,27 @@
     </table>
     
     <script>
+        // Firebase Configuration - Replace with your own
+        const firebaseConfig = {
+            apiKey: "AIzaSyA6yUzrCoUKSr3JNZb3HmjTpoS1rufWxGE",
+            authDomain: "hallsrecords.firebaseapp.com",
+            projectId: "hallsrecords",
+            storageBucket: "hallsrecords.firebasestorage.app",
+            messagingSenderId: "271893832479",
+            appId: "1:271893832479:web:714fb4c2a2502dbad7c62a",
+            measurementId: "G-WCPLZ89KK6"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        
         function showLogin() {
             document.getElementById("loginSection").style.display = "block";
         }
 
         function checkPassword() {
             const password = document.getElementById("adminPass").value;
-            if (password === "cricket123") { // Change this password as needed
+            if (password === "cricket123") { 
                 localStorage.setItem("isAdmin", "true");
                 document.getElementById("adminUpload").style.display = "block";
                 document.getElementById("loginSection").style.display = "none";
@@ -107,7 +123,7 @@
             }
         }
 
-        function loadFile(tableNumber) {
+        function uploadData(tableNumber) {
             const fileInput = document.getElementById(`fileInput${tableNumber}`);
             const file = fileInput.files[0];
             if (!file) {
@@ -118,21 +134,26 @@
             const reader = new FileReader();
             reader.onload = function(event) {
                 const text = event.target.result;
-                parseData(text, tableNumber);
-                localStorage.setItem(`tableData${tableNumber}`, text);
+                database.ref(`table${tableNumber}`).set(text);
             };
             
-            if (file.name.endsWith(".csv")) {
-                reader.readAsText(file);
-            } else {
-                alert("Only CSV files are supported currently.");
+            reader.readAsText(file);
+        }
+
+        function loadData() {
+            for (let i = 1; i <= 3; i++) {
+                database.ref(`table${i}`).on("value", (snapshot) => {
+                    if (snapshot.exists()) {
+                        parseData(snapshot.val(), i);
+                    }
+                });
             }
         }
 
         function parseData(data, tableNumber) {
             const rows = data.split("\n");
             let tableBody = "";
-            for (let i = 1; i < rows.length; i++) { // Skip header
+            for (let i = 1; i < rows.length; i++) {
                 const cols = rows[i].split(",");
                 if (cols.length < 3) continue;
                 tableBody += `<tr>
@@ -143,21 +164,12 @@
             }
             document.querySelector(`#recordsTable${tableNumber} tbody`).innerHTML = tableBody;
         }
-
-        function loadStoredData() {
-            for (let i = 1; i <= 3; i++) {
-                const storedData = localStorage.getItem(`tableData${i}`);
-                if (storedData) {
-                    parseData(storedData, i);
-                }
-            }
-        }
-
+        
         if (localStorage.getItem("isAdmin") === "true") {
             document.getElementById("adminUpload").style.display = "block";
         }
 
-        loadStoredData();
+        loadData();
     </script>
 </body>
 </html>
