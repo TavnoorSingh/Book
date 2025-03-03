@@ -109,6 +109,25 @@
 
         const database = firebase.database();
 
+        function showLogin() {
+            document.getElementById("loginSection").style.display = "block";
+        }
+
+        function checkPassword() {
+            if (document.getElementById("adminPass").value === "cricket123") {
+                localStorage.setItem("isAdmin", "true");
+                document.getElementById("adminUpload").style.display = "block";
+                document.getElementById("loginSection").style.display = "none";
+            } else {
+                alert("Incorrect password");
+            }
+        }
+
+        function showRecords(type) {
+            document.querySelectorAll('.record-section').forEach(div => div.style.display = 'none');
+            document.getElementById(type).style.display = 'block';
+        }
+
         function loadTable(type) {
             database.ref("weeks").once("value", snapshot => {
                 let weeks = Object.keys(snapshot.val() || {}).sort().reverse();
@@ -117,10 +136,10 @@
                     let data = snap.val();
                     if (!data || typeof data !== "string") {
                         console.warn(`⚠️ No valid data found for ${type}`);
-                        document.getElementById("recordsTable").innerHTML = "<tr><td colspan='100%'>No data available</td></tr>";
+                        document.getElementById("tableBody").innerHTML = "<tr><td colspan='100%'>No data available</td></tr>";
                         return;
                     }
-                    document.getElementById("recordsTable").innerHTML = parseCSVToTable(data);
+                    document.getElementById("tableBody").innerHTML = parseCSVToTable(data);
                 });
             });
         }
