@@ -1,10 +1,14 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cricket Weekly Records</title>
+    
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+    
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -93,18 +97,17 @@
     </table>
     
     <script>
-        // Firebase Configuration - Replace with your own
+        // Firebase Configuration - Replace with your own details
         const firebaseConfig = {
-            apiKey: "AIzaSyA6yUzrCoUKSr3JNZb3HmjTpoS1rufWxGE",
-            authDomain: "hallsrecords.firebaseapp.com",
-            databaseURL: "https://console.firebase.google.com/project/hallsrecords/database/hallsrecords-default-rtdb/data/~2F?hl=en_GB",            
-            projectId: "hallsrecords",
-            storageBucket: "hallsrecords.firebasestorage.app",
-            messagingSenderId: "271893832479",
-            appId: "1:271893832479:web:714fb4c2a2502dbad7c62a",
-            measurementId: "G-WCPLZ89KK6"
+            apiKey: "AIzaSyBDfZW5VH_uWNGY0Krsy9wQt5mcHXgLMgY",
+            authDomain: "hallscl.firebaseapp.com",
+            databaseURL: "https://hallscl-default-rtdb.europe-west1.firebasedatabase.app/",
+            projectId: "hallscl",
+            storageBucket: "hallscl.appspot.com",
+            messagingSenderId: "176761403936",
+            appId: "1:176761403936:web:c9c36c7ca955fa896c9a45"
         };
-        
+
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         
@@ -136,7 +139,7 @@
                 const text = event.target.result;
                 database.ref(`table${tableNumber}`).set(text).then(() => {
                     alert("Data uploaded successfully!");
-                    loadData(); // Refresh tables immediately
+                    loadData();
                 }).catch(error => {
                     alert("Error uploading data: " + error.message);
                 });
@@ -169,7 +172,7 @@
             }
             document.querySelector(`#recordsTable${tableNumber} tbody`).innerHTML = tableBody;
         }
-        
+
         if (localStorage.getItem("isAdmin") === "true") {
             document.getElementById("adminUpload").style.display = "block";
         }
