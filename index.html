@@ -152,11 +152,47 @@
                 let weeks = Object.keys(snapshot.val() || {}).sort().reverse();
                 let weekToLoad = type.includes("Last") ? weeks[1] : (type.includes("This") ? weeks[0] : "total");
                 database.ref(`weeks/${weekToLoad}/${type.includes("batting") ? 'batting' : 'bowling'}`).once("value", snap => {
-                    let data = snap.val();
-                    document.getElementById("tableBody").innerHTML = Object.entries(data).map(([key, value]) => 
-                        `<tr><td>${key}</td><td>${value}</td></tr>`
-                    ).join('');
-                });
+    let data = snap.val();
+
+    // Prevent error when no data is available
+    if (!data) {
+        console.warn(`⚠️ No data found for ${type}`);
+        document.getElementById("tableBody").innerHTML = "<tr><td colspan='2'>No data available</td></tr>";
+        return;
+    }
+
+    function parseCSVToTable(csvData) {
+    let rows = csvData.split("\\n");
+    let tableHTML = "";
+    
+    // Extract headers from the first row
+    let headers = rows[0].split(",");
+    tableHTML += "<tr>" + headers.map(header => `<th>${header.trim()}</th>`).join("") + "</tr>";
+    
+    // Extract data from remaining rows
+    for (let i = 1; i < rows.length; i++) {
+        let cols = rows[i].split(",");
+        if (cols.length < headers.length) continue;  // Skip empty or incomplete rows
+        tableHTML += "<tr>" + cols.map(col => `<td>${col.trim()}</td>`).join("") + "</tr>";
+    }
+
+    return tableHTML;
+}
+
+database.ref(`weeks/${weekToLoad}/${type.includes("batting") ? 'batting' : 'bowling'}`).once("value", snap => {
+    let data = snap.val();
+
+    if (!data) {
+        console.warn(`⚠️ No data found for ${type}`);
+        document.getElementById("tableBody").innerHTML = "<tr><td colspan='2'>No data available</td></tr>";
+        return;
+    }
+
+    document.getElementById("tableBody").innerHTML = parseCSVToTable(data);
+});
+
+});
+
             });
         }
     </script>
