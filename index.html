@@ -190,18 +190,25 @@
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         if (typeof firebase === "undefined") {
-            console.error("Firebase SDK not loaded!");
-            alert("Error: Firebase SDK not loaded. Check your Firebase scripts.");
+            console.error("❌ Firebase SDK not loaded!");
+            alert("❌ Error: Firebase SDK not loaded. Check your Firebase scripts.");
             return;
         }
 
         console.log("✅ Firebase SDK loaded successfully.");
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+
+        // Prevent duplicate Firebase initialization
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+            console.log("✅ Firebase connected successfully!");
+        } else {
+            console.warn("⚠️ Firebase already initialized. Skipping re-initialization.");
+        }
 
         // Make Firebase globally accessible
-        window.database = database;
+        window.database = firebase.database();
 
         loadData(); // Load table data only after Firebase is initialized
     });
 </script>
+
