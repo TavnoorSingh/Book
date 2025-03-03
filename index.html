@@ -97,7 +97,7 @@
     </table>
     
     <script>
-        // Firebase Configuration - Replace with your own details
+        // Firebase Configuration (Replace with your details)
         const firebaseConfig = {
             apiKey: "AIzaSyBDfZW5VH_uWNGY0Krsy9wQt5mcHXgLMgY",
             authDomain: "hallscl.firebaseapp.com",
@@ -108,9 +108,18 @@
             appId: "1:176761403936:web:c9c36c7ca955fa896c9a45"
         };
 
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-        
+        document.addEventListener("DOMContentLoaded", function () {
+            if (typeof firebase === "undefined") {
+                console.error("Firebase SDK not loaded!");
+                alert("Error: Firebase SDK not loaded. Check your Firebase scripts.");
+                return;
+            }
+
+            firebase.initializeApp(firebaseConfig);
+            console.log("✅ Firebase connected successfully!");
+            loadData();
+        });
+
         function showLogin() {
             document.getElementById("loginSection").style.display = "block";
         }
@@ -130,54 +139,42 @@
             const fileInput = document.getElementById(`fileInput${tableNumber}`);
             const file = fileInput.files[0];
             if (!file) {
-                alert("Please select a file first.");
+                alert("⚠️ Please select a file first.");
                 return;
             }
-            
+
             const reader = new FileReader();
-            reader.onload = function(event) {
+            reader.onload = function (event) {
                 const text = event.target.result;
-                database.ref(`table${tableNumber}`).set(text).then(() => {
-                    alert("Data uploaded successfully!");
-                    loadData();
-                }).catch(error => {
-                    alert("Error uploading data: " + error.message);
-                });
+                const database = firebase.database();
+
+                database.ref(`table${tableNumber}`).set(text)
+                    .then(() => {
+                        alert("✅ Data uploaded successfully!");
+                        console.log(`✅ Data uploaded successfully for Table ${tableNumber}`);
+                        loadData();
+                    })
+                    .catch(error => {
+                        console.error("❌ Error uploading data:", error);
+                        alert("❌ Error uploading data: " + error.message);
+                    });
             };
-            
             reader.readAsText(file);
         }
 
         function loadData() {
+            const database = firebase.database();
+
             for (let i = 1; i <= 3; i++) {
                 database.ref(`table${i}`).on("value", (snapshot) => {
                     if (snapshot.exists()) {
                         parseData(snapshot.val(), i);
                     }
+                }, (error) => {
+                    console.error("❌ Firebase Read Error:", error);
                 });
             }
         }
-
-        function parseData(data, tableNumber) {
-            const rows = data.split("\n");
-            let tableBody = "";
-            for (let i = 1; i < rows.length; i++) {
-                const cols = rows[i].split(",");
-                if (cols.length < 3) continue;
-                tableBody += `<tr>
-                    <td>${cols[0]}</td>
-                    <td>${cols[1]}</td>
-                    <td>${cols[2]}</td>
-                </tr>`;
-            }
-            document.querySelector(`#recordsTable${tableNumber} tbody`).innerHTML = tableBody;
-        }
-
-        if (localStorage.getItem("isAdmin") === "true") {
-            document.getElementById("adminUpload").style.display = "block";
-        }
-
-        loadData();
     </script>
 </body>
 </html>
