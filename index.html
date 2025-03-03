@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cricket Batting Records</title>
+    <title>Halls United Cricket League (HUCL)</title>
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -35,13 +35,13 @@
             background-color: #ff4500;
             color: white;
         }
-        .upload-section {
+        .upload-section, .record-section {
             display: none;
         }
     </style>
 </head>
 <body>
-    <h1>Cricket Batting Records</h1>
+    <h1>Halls United Cricket League (HUCL)</h1>
     
     <button onclick="showLogin()">Admin Login</button>
     <div id="loginSection" style="display:none;">
@@ -51,61 +51,55 @@
     
     <div class="upload-section" id="adminUpload">
         <form id="uploadForm">
-            <label>Upload Batting Data: <input type="file" id="fileInput" accept=".csv"></label>
-            <button type="button" onclick="uploadData()">Upload</button>
+            <label>Upload Weekly Batting Data: <input type="file" id="battingFile" accept=".csv"></label>
+            <button type="button" onclick="uploadData('batting')">Upload Batting</button><br>
+            <label>Upload Weekly Bowling Data: <input type="file" id="bowlingFile" accept=".csv"></label>
+            <button type="button" onclick="uploadData('bowling')">Upload Bowling</button>
         </form>
     </div>
     
-    <h2>Batting Records</h2>
+    <h2>Select Record Type</h2>
+    <button onclick="showRecords('last')">Last Week</button>
+    <button onclick="showRecords('this')">This Week</button>
+    <button onclick="showRecords('total')">Total</button>
+    
+    <div id="last" class="record-section">
+        <h2>Last Week's Records</h2>
+        <button onclick="loadTable('battingLast')">Orange Cap</button>
+        <button onclick="loadTable('bowlingLast')">Purple Cap</button>
+        <button onclick="loadTable('mvpLast')">MVP</button>
+    </div>
+    
+    <div id="this" class="record-section">
+        <h2>This Week's Records</h2>
+        <button onclick="loadTable('battingThis')">Orange Cap</button>
+        <button onclick="loadTable('bowlingThis')">Purple Cap</button>
+        <button onclick="loadTable('mvpThis')">MVP</button>
+    </div>
+    
+    <div id="total" class="record-section">
+        <h2>Total Records</h2>
+        <button onclick="loadTable('battingTotal')">Orange Cap</button>
+        <button onclick="loadTable('bowlingTotal')">Purple Cap</button>
+        <button onclick="loadTable('mvpTotal')">MVP</button>
+    </div>
+    
     <table id="recordsTable">
-        <thead>
-            <tr>
-                <th>Batsman</th>
-                <th>Runs</th>
-                <th>Balls Faced</th>
-                <th>Sixes</th>
-                <th>Fours</th>
-                <th>Singles</th>
-                <th>Strike Rate</th>
-                <th>Batting Average</th>
-                <th>Dismissals</th>
-                <th>Highest Score</th>
-                <th>Fifties/Hundreds</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
+        <thead id="tableHead"></thead>
+        <tbody id="tableBody"></tbody>
     </table>
     
     <script>
-        // Firebase Configuration (Replace with your details)
-        const firebaseConfig = {
-            apiKey: "AIzaSyBDfZW5VH_uWNGY0Krsy9wQt5mcHXgLMgY",
-            authDomain: "hallscl.firebaseapp.com",
-            databaseURL: "https://hallscl-default-rtdb.europe-west1.firebasedatabase.app/",
-            projectId: "hallscl",
-            storageBucket: "hallscl.appspot.com",
-            messagingSenderId: "176761403936",
-            appId: "1:176761403936:web:c9c36c7ca955fa896c9a45"
-        };
-
-        document.addEventListener("DOMContentLoaded", function () {
-            if (!firebase.apps.length) {
-                firebase.initializeApp(firebaseConfig);
-                console.log("✅ Firebase connected successfully!");
-            } else {
-                console.warn("⚠️ Firebase already initialized. Skipping re-initialization.");
-            }
-            window.database = firebase.database();
-            loadData();
-        });
+        const firebaseConfig = { /* Your Firebase Config */ };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
 
         function showLogin() {
             document.getElementById("loginSection").style.display = "block";
         }
 
         function checkPassword() {
-            const password = document.getElementById("adminPass").value;
-            if (password === "cricket123") { 
+            if (document.getElementById("adminPass").value === "cricket123") {
                 localStorage.setItem("isAdmin", "true");
                 document.getElementById("adminUpload").style.display = "block";
                 document.getElementById("loginSection").style.display = "none";
@@ -114,68 +108,41 @@
             }
         }
 
-        function uploadData() {
-            const fileInput = document.getElementById("fileInput");
+        function uploadData(type) {
+            const fileInput = document.getElementById(type + "File");
             const file = fileInput.files[0];
             if (!file) {
-                alert("⚠️ Please select a file first.");
+                alert("Select a file first.");
                 return;
             }
-
+            const weekNumber = new Date().getTime();
             const reader = new FileReader();
             reader.onload = function (event) {
-                const text = event.target.result;
-                if (!window.database) {
-                    console.error("❌ Firebase database not initialized.");
-                    alert("❌ Firebase database is not connected. Try refreshing the page.");
-                    return;
-                }
-                window.database.ref("battingRecords").set(text)
-                    .then(() => {
-                        alert("✅ Data uploaded successfully!");
-                        loadData();
-                    })
-                    .catch(error => {
-                        console.error("❌ Error uploading data:", error);
-                        alert("❌ Error uploading data: " + error.message);
-                    });
+                database.ref(`weeks/Week_${weekNumber}/${type}`).set(event.target.result)
+                    .then(() => alert(type.charAt(0).toUpperCase() + type.slice(1) + " Data uploaded!"))
+                    .catch(error => alert("Upload failed: " + error.message));
             };
             reader.readAsText(file);
         }
 
-        function loadData() {
-            window.database.ref("battingRecords").on("value", (snapshot) => {
-                if (snapshot.exists()) {
-                    parseData(snapshot.val());
-                } else {
-                    console.warn("⚠️ No batting records found");
-                }
-            }, (error) => {
-                console.error("❌ Firebase Read Error:", error);
-            });
+        function showRecords(type) {
+            document.querySelectorAll('.record-section').forEach(div => div.style.display = 'none');
+            document.getElementById(type).style.display = 'block';
         }
 
-        function parseData(data) {
-            const rows = data.split("\n");
-            let tableBody = "";
-            for (let i = 1; i < rows.length; i++) {
-                const cols = rows[i].split(",");
-                if (cols.length < 11) continue;
-                tableBody += `<tr>
-                    <td>${cols[0]}</td>
-                    <td>${cols[1]}</td>
-                    <td>${cols[2]}</td>
-                    <td>${cols[3]}</td>
-                    <td>${cols[4]}</td>
-                    <td>${cols[5]}</td>
-                    <td>${cols[6]}</td>
-                    <td>${cols[7]}</td>
-                    <td>${cols[8]}</td>
-                    <td>${cols[9]}</td>
-                    <td>${cols[10]}</td>
-                </tr>`;
-            }
-            document.querySelector("#recordsTable tbody").innerHTML = tableBody;
+        function loadTable(type) {
+            document.getElementById("tableHead").innerHTML = `<tr><th>Player</th><th>Stats</th></tr>`;
+            document.getElementById("tableBody").innerHTML = `<tr><td colspan='2'>Loading...</td></tr>`;
+            database.ref("weeks").once("value", snapshot => {
+                let weeks = Object.keys(snapshot.val() || {}).sort().reverse();
+                let weekToLoad = type.includes("Last") ? weeks[1] : (type.includes("This") ? weeks[0] : "total");
+                database.ref(`weeks/${weekToLoad}/${type.includes("batting") ? 'batting' : 'bowling'}`).once("value", snap => {
+                    let data = snap.val();
+                    document.getElementById("tableBody").innerHTML = Object.entries(data).map(([key, value]) => 
+                        `<tr><td>${key}</td><td>${value}</td></tr>`
+                    ).join('');
+                });
+            });
         }
     </script>
 </body>
