@@ -109,40 +109,46 @@
 
         const database = firebase.database();
 
-        function showLogin() {
-            document.getElementById("loginSection").style.display = "block";
-        }
-
-        function checkPassword() {
-            if (document.getElementById("adminPass").value === "cricket123") {
-                localStorage.setItem("isAdmin", "true");
-                document.getElementById("adminUpload").style.display = "block";
-                document.getElementById("loginSection").style.display = "none";
-            } else {
-                alert("Incorrect password");
+        function uploadData(type) {
+            const fileInput = document.getElementById(`${type}File`);
+            const file = fileInput.files[0];
+            if (!file) {
+                alert("Select a file first.");
+                return;
             }
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                database.ref(`weeks/${Date.now()}/${type}`).set(event.target.result)
+                    .then(() => alert(`${type.toUpperCase()} data uploaded successfully!`))
+                    .catch(error => alert("Error uploading data: " + error.message));
+            };
+            reader.readAsText(file);
         }
 
-        function showRecords(type) {
-            document.querySelectorAll('.record-section').forEach(div => div.style.display = 'none');
-            document.getElementById(type).style.display = 'block';
-        }
-
-        function loadTable(type) {
-            database.ref("weeks").once("value", snapshot => {
-                let weeks = Object.keys(snapshot.val() || {}).sort().reverse();
-                let weekToLoad = type.includes("Last") ? weeks[1] : (type.includes("This") ? weeks[0] : "total");
-                database.ref(`weeks/${weekToLoad}/${type.includes("batting") ? 'batting' : 'bowling'}`).once("value", snap => {
-                    let data = snap.val();
-                    if (!data || typeof data !== "string") {
-                        console.warn(`⚠️ No valid data found for ${type}`);
-                        document.getElementById("tableBody").innerHTML = "<tr><td colspan='100%'>No data available</td></tr>";
-                        return;
-                    }
-                    document.getElementById("tableBody").innerHTML = parseCSVToTable(data);
-                });
+        function loadData() {
+            database.ref("weeks").on("value", snapshot => {
+                if (snapshot.exists()) {
+                    console.log("✅ Data loaded successfully!");
+                } else {
+                    console.warn("⚠️ No records found");
+                }
+            }, error => {
+                console.error("❌ Firebase Read Error:", error);
             });
         }
+
+        function parseData(data) {
+            const rows = data.split("\n");
+            let tableBody = "";
+            for (let i = 1; i < rows.length; i++) {
+                const cols = rows[i].split(",");
+                if (cols.length < 3) continue;
+                tableBody += `<tr>${cols.map(col => `<td>${col.trim()}</td>`).join('')}</tr>`;
+            }
+            document.querySelector("#tableBody").innerHTML = tableBody;
+        }
+
+        loadData();
     </script>
 </body>
 </html>
