@@ -108,7 +108,9 @@
         }
 
         const database = firebase.database();
-
+        function showLogin() {
+            document.getElementById("loginSection").style.display = "block";
+        }
         function uploadData(type) {
             const fileInput = document.getElementById(`${type}File`);
             const file = fileInput.files[0];
