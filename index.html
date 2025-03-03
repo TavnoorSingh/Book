@@ -30,18 +30,27 @@
             background-color: #ff4500;
             color: white;
         }
-        #uploadForm {
-            margin: 20px;
+        .upload-section {
+            display: none;
         }
     </style>
 </head>
 <body>
     <h1>Cricket Weekly Records</h1>
-    <form id="uploadForm">
-        <input type="file" id="fileInput" accept=".csv, .xlsx">
-        <button type="button" onclick="loadFile()">Upload</button>
-    </form>
-    <table id="recordsTable">
+    
+    <div class="upload-section" id="adminUpload">
+        <form id="uploadForm">
+            <label>Upload Table 1: <input type="file" id="fileInput1" accept=".csv"></label>
+            <button type="button" onclick="loadFile(1)">Upload</button><br>
+            <label>Upload Table 2: <input type="file" id="fileInput2" accept=".csv"></label>
+            <button type="button" onclick="loadFile(2)">Upload</button><br>
+            <label>Upload Table 3: <input type="file" id="fileInput3" accept=".csv"></label>
+            <button type="button" onclick="loadFile(3)">Upload</button>
+        </form>
+    </div>
+    
+    <h2>Table 1</h2>
+    <table id="recordsTable1">
         <thead>
             <tr>
                 <th>Name</th>
@@ -49,14 +58,41 @@
                 <th>Points</th>
             </tr>
         </thead>
-        <tbody>
-            <!-- Data will be inserted here -->
-        </tbody>
+        <tbody></tbody>
+    </table>
+
+    <h2>Table 2</h2>
+    <table id="recordsTable2">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Catch</th>
+                <th>Points</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <h2>Table 3</h2>
+    <table id="recordsTable3">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Catch</th>
+                <th>Points</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
     </table>
     
     <script>
-        function loadFile() {
-            const fileInput = document.getElementById("fileInput");
+        const isAdmin = localStorage.getItem("isAdmin");
+        if (isAdmin === "true") {
+            document.getElementById("adminUpload").style.display = "block";
+        }
+
+        function loadFile(tableNumber) {
+            const fileInput = document.getElementById(`fileInput${tableNumber}`);
             const file = fileInput.files[0];
             if (!file) {
                 alert("Please select a file first.");
@@ -66,7 +102,8 @@
             const reader = new FileReader();
             reader.onload = function(event) {
                 const text = event.target.result;
-                parseData(text);
+                parseData(text, tableNumber);
+                localStorage.setItem(`tableData${tableNumber}`, text);
             };
             
             if (file.name.endsWith(".csv")) {
@@ -76,7 +113,7 @@
             }
         }
 
-        function parseData(data) {
+        function parseData(data, tableNumber) {
             const rows = data.split("\n");
             let tableBody = "";
             for (let i = 1; i < rows.length; i++) { // Skip header
@@ -88,8 +125,19 @@
                     <td>${cols[2]}</td>
                 </tr>`;
             }
-            document.querySelector("#recordsTable tbody").innerHTML = tableBody;
+            document.querySelector(`#recordsTable${tableNumber} tbody`).innerHTML = tableBody;
         }
+
+        function loadStoredData() {
+            for (let i = 1; i <= 3; i++) {
+                const storedData = localStorage.getItem(`tableData${i}`);
+                if (storedData) {
+                    parseData(storedData, i);
+                }
+            }
+        }
+
+        loadStoredData();
     </script>
 </body>
 </html>
