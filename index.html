@@ -6,8 +6,10 @@
     <title>Cricket Weekly Records</title>
     
     <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+<!-- Firebase v8 for full compatibility -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
     
     <style>
         body {
@@ -136,31 +138,38 @@
         }
 
         function uploadData(tableNumber) {
-            const fileInput = document.getElementById(`fileInput${tableNumber}`);
-            const file = fileInput.files[0];
-            if (!file) {
-                alert("⚠️ Please select a file first.");
+        const fileInput = document.getElementById(`fileInput${tableNumber}`);
+        const file = fileInput.files[0];
+
+        if (!file) {
+            alert("⚠️ Please select a file first.");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function (event) {
+            const text = event.target.result;
+
+            if (!window.database) {
+                console.error("❌ Firebase database not initialized.");
+                alert("❌ Firebase database is not connected. Try refreshing the page.");
                 return;
             }
 
-            const reader = new FileReader();
-            reader.onload = function (event) {
-                const text = event.target.result;
-                const database = firebase.database();
+            window.database.ref(`table${tableNumber}`).set(text)
+                .then(() => {
+                    alert("✅ Data uploaded successfully!");
+                    console.log(`✅ Data uploaded successfully for Table ${tableNumber}`);
+                    loadData();
+                })
+                .catch(error => {
+                    console.error("❌ Error uploading data:", error);
+                    alert("❌ Error uploading data: " + error.message);
+                });
+        };
 
-                database.ref(`table${tableNumber}`).set(text)
-                    .then(() => {
-                        alert("✅ Data uploaded successfully!");
-                        console.log(`✅ Data uploaded successfully for Table ${tableNumber}`);
-                        loadData();
-                    })
-                    .catch(error => {
-                        console.error("❌ Error uploading data:", error);
-                        alert("❌ Error uploading data: " + error.message);
-                    });
-            };
-            reader.readAsText(file);
-        }
+        reader.readAsText(file);
+    }
 
         function loadData() {
             const database = firebase.database();
@@ -178,3 +187,21 @@
     </script>
 </body>
 </html>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        if (typeof firebase === "undefined") {
+            console.error("Firebase SDK not loaded!");
+            alert("Error: Firebase SDK not loaded. Check your Firebase scripts.");
+            return;
+        }
+
+        console.log("✅ Firebase SDK loaded successfully.");
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Make Firebase globally accessible
+        window.database = database;
+
+        loadData(); // Load table data only after Firebase is initialized
+    });
+</script>
