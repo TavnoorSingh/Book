@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cricket Weekly Records</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #0b6623;
+            color: white;
+            text-align: center;
+        }
+        h1 {
+            color: #ffd700;
+        }
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            background: white;
+            color: black;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #ff4500;
+            color: white;
+        }
+        #uploadForm {
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cricket Weekly Records</h1>
+    <form id="uploadForm">
+        <input type="file" id="fileInput" accept=".csv, .xlsx">
+        <button type="button" onclick="loadFile()">Upload</button>
+    </form>
+    <table id="recordsTable">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Catch</th>
+                <th>Points</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Data will be inserted here -->
+        </tbody>
+    </table>
+    
+    <script>
+        function loadFile() {
+            const fileInput = document.getElementById("fileInput");
+            const file = fileInput.files[0];
+            if (!file) {
+                alert("Please select a file first.");
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const text = event.target.result;
+                parseData(text);
+            };
+            
+            if (file.name.endsWith(".csv")) {
+                reader.readAsText(file);
+            } else {
+                alert("Only CSV files are supported currently.");
+            }
+        }
+
+        function parseData(data) {
+            const rows = data.split("\n");
+            let tableBody = "";
+            for (let i = 1; i < rows.length; i++) { // Skip header
+                const cols = rows[i].split(",");
+                if (cols.length < 3) continue;
+                tableBody += `<tr>
+                    <td>${cols[0]}</td>
+                    <td>${cols[1]}</td>
+                    <td>${cols[2]}</td>
+                </tr>`;
+            }
+            document.querySelector("#recordsTable tbody").innerHTML = tableBody;
+        }
+    </script>
+</body>
+</html>
