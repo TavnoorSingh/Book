@@ -109,90 +109,19 @@
 
         const database = firebase.database();
 
-        function showLogin() {
-            document.getElementById("loginSection").style.display = "block";
-        }
-
-        function checkPassword() {
-            if (document.getElementById("adminPass").value === "cricket123") {
-                localStorage.setItem("isAdmin", "true");
-                document.getElementById("adminUpload").style.display = "block";
-                document.getElementById("loginSection").style.display = "none";
-            } else {
-                alert("Incorrect password");
-            }
-        }
-
-        function uploadData(type) {
-            const fileInput = document.getElementById(type + "File");
-            const file = fileInput.files[0];
-            if (!file) {
-                alert("Select a file first.");
-                return;
-            }
-            const weekNumber = new Date().getTime();
-            const reader = new FileReader();
-            reader.onload = function (event) {
-                database.ref(`weeks/Week_${weekNumber}/${type}`).set(event.target.result)
-                    .then(() => alert(type.charAt(0).toUpperCase() + type.slice(1) + " Data uploaded!"))
-                    .catch(error => alert("Upload failed: " + error.message));
-            };
-            reader.readAsText(file);
-        }
-
-        function showRecords(type) {
-            document.querySelectorAll('.record-section').forEach(div => div.style.display = 'none');
-            document.getElementById(type).style.display = 'block';
-        }
-
         function loadTable(type) {
-            document.getElementById("tableHead").innerHTML = `<tr><th>Player</th><th>Stats</th></tr>`;
-            document.getElementById("tableBody").innerHTML = `<tr><td colspan='2'>Loading...</td></tr>`;
             database.ref("weeks").once("value", snapshot => {
                 let weeks = Object.keys(snapshot.val() || {}).sort().reverse();
                 let weekToLoad = type.includes("Last") ? weeks[1] : (type.includes("This") ? weeks[0] : "total");
                 database.ref(`weeks/${weekToLoad}/${type.includes("batting") ? 'batting' : 'bowling'}`).once("value", snap => {
-    let data = snap.val();
-
-    // Prevent error when no data is available
-    if (!data) {
-        console.warn(`⚠️ No data found for ${type}`);
-        document.getElementById("tableBody").innerHTML = "<tr><td colspan='2'>No data available</td></tr>";
-        return;
-    }
-
-    function parseCSVToTable(csvData) {
-    let rows = csvData.split("\\n");
-    let tableHTML = "";
-    
-    // Extract headers from the first row
-    let headers = rows[0].split(",");
-    tableHTML += "<tr>" + headers.map(header => `<th>${header.trim()}</th>`).join("") + "</tr>";
-    
-    // Extract data from remaining rows
-    for (let i = 1; i < rows.length; i++) {
-        let cols = rows[i].split(",");
-        if (cols.length < headers.length) continue;  // Skip empty or incomplete rows
-        tableHTML += "<tr>" + cols.map(col => `<td>${col.trim()}</td>`).join("") + "</tr>";
-    }
-
-    return tableHTML;
-}
-
-database.ref(`weeks/${weekToLoad}/${type.includes("batting") ? 'batting' : 'bowling'}`).once("value", snap => {
-    let data = snap.val();
-
-    if (!data) {
-        console.warn(`⚠️ No data found for ${type}`);
-        document.getElementById("tableBody").innerHTML = "<tr><td colspan='2'>No data available</td></tr>";
-        return;
-    }
-
-    document.getElementById("tableBody").innerHTML = parseCSVToTable(data);
-});
-
-});
-
+                    let data = snap.val();
+                    if (!data || typeof data !== "string") {
+                        console.warn(`⚠️ No valid data found for ${type}`);
+                        document.getElementById("recordsTable").innerHTML = "<tr><td colspan='100%'>No data available</td></tr>";
+                        return;
+                    }
+                    document.getElementById("recordsTable").innerHTML = parseCSVToTable(data);
+                });
             });
         }
     </script>
