@@ -90,8 +90,23 @@
     </table>
     
     <script>
-        const firebaseConfig = { /* Your Firebase Config */ };
-        firebase.initializeApp(firebaseConfig);
+        const firebaseConfig = {
+            apiKey: "AIzaSyBDfZW5VH_uWNGY0Krsy9wQt5mcHXgLMgY",
+            authDomain: "hallscl.firebaseapp.com",
+            databaseURL: "https://hallscl-default-rtdb.europe-west1.firebasedatabase.app/",
+            projectId: "hallscl",
+            storageBucket: "hallscl.appspot.com",
+            messagingSenderId: "176761403936",
+            appId: "1:176761403936:web:c9c36c7ca955fa896c9a45"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+            console.log("✅ Firebase connected successfully!");
+        } else {
+            console.warn("⚠️ Firebase already initialized. Skipping re-initialization.");
+        }
+
         const database = firebase.database();
 
         function showLogin() {
