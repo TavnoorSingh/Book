@@ -13,7 +13,7 @@
     /* Cricket-themed styling */
     body {
       font-family: Arial, sans-serif;
-      background: url('https://imgur.com/gallery/awosme-view-cricket-stadium-uk-7YhrR'); /* replace with a cricket-themed background image URL */
+      background: url('https://i.imgur.com/Jo8UWWu.jpeg'); /* replace with a cricket-themed background image URL */
       background-size: cover;
       color: #fff;
       margin: 0;
@@ -209,15 +209,21 @@
     }
     
     // Helper function: parse CSV text into array of objects (assumes header row)
-    function parseCSV(csvText) { // Detect delimiter: if the header row contains a tab, use "\t", otherwise use ","
-        const delimiter = csvText.indexOf("\t") > -1 ? "\t" : ",";
-        const lines = csvText.trim().split("\n");
-        const headers = lines[0].split(delimiter).map(h => h.trim());
+    function parseCSV(csvText) {                  // Remove BOM if present  
+        csvText = csvText.replace(/^\uFEFF/, '');   // Detect delimiter: use tab if found, else comma.
+        let delimiter = csvText.indexOf("\t") > -1 ? "\t" : ",";    // Split lines considering both \r\n and \n line breaks
+        const lines = csvText.trim().split(/\r?\n/);    // Get headers and trim them
+        let headers = lines[0].split(delimiter).map(h => h.trim());  // If only one header is detected, try switching the delimiter to tab
+        if (headers.length === 1) {      // If only one header is detected, try switching the delimiter to tab
+            delimiter = "\t";
+            headers = lines[0].split(delimiter).map(h => h.trim());
+        }
+        console.log("Detected delimiter:", delimiter, "Headers:", headers); // Log headers to help debug any issues
         const data = [];
         for (let i = 1; i < lines.length; i++) {
             if (!lines[i].trim()) continue;
             const cols = lines[i].split(delimiter).map(c => c.trim());
-            const row = {};
+            let row = {};
             headers.forEach((h, index) => {
                 row[h] = cols[index];
             });
@@ -225,6 +231,7 @@
         }
         return data;
     }
+
 
     
     // Helper functions for overs conversion (bowling)
