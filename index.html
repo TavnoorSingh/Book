@@ -13,7 +13,7 @@
     /* Cricket-themed styling */
     body {
       font-family: Arial, sans-serif;
-      background: url('https://i.imgur.com/Jo8UWWu.jpeg'); /* replace with a cricket-themed background image URL */
+      background: url('https://i.imgur.com/EXAMPLE.jpg'); /* Replace with your cricket-themed background */
       background-size: cover;
       color: #fff;
       margin: 0;
@@ -154,21 +154,18 @@
       appId: "1:176761403936:web:c9c36c7ca955fa896c9a45"
     };
     
-    // Initialize Firebase
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
       console.log("✅ Firebase connected successfully!");
     }
     const db = firebase.database();
     
-    // Global variables to track current view and category
     let currentWeekType = "lastWeek"; // "lastWeek", "thisWeek", or "total"
     let currentCategory = "batting"; // "batting", "bowling", "mvp"
     
     // Toggle Admin Login display
     function toggleAdminLogin() {
-      const loginDiv = document.getElementById("adminLogin");
-      loginDiv.classList.toggle("hidden");
+      document.getElementById("adminLogin").classList.toggle("hidden");
     }
     
     // Check admin password
@@ -186,11 +183,9 @@
     // Main view navigation: lastWeek, thisWeek, total
     function showMainView(weekType) {
       currentWeekType = weekType;
-      // update button active states
       document.getElementById("btnLast").classList.toggle("active", weekType==="lastWeek");
       document.getElementById("btnThis").classList.toggle("active", weekType==="thisWeek");
       document.getElementById("btnTotal").classList.toggle("active", weekType==="total");
-      // By default, show current category data
       showCategory(currentCategory);
     }
     
@@ -200,7 +195,7 @@
       document.getElementById("btnBatting").classList.toggle("active", category==="batting");
       document.getElementById("btnBowling").classList.toggle("active", category==="bowling");
       document.getElementById("btnMVP").classList.toggle("active", category==="mvp");
-      // Load and display data based on currentWeekType and currentCategory
+      
       if(currentWeekType === "total") {
         loadTotalData(category);
       } else {
@@ -208,35 +203,38 @@
       }
     }
     
-    // Helper function: parse CSV text into array of objects (assumes header row)
-    function parseCSV(csvText) {                  // Remove BOM if present  
-        csvText = csvText.replace(/^\uFEFF/, '');   // Detect delimiter: use tab if found, else comma.
-        let delimiter = csvText.indexOf("\t") > -1 ? "\t" : ",";    // Split lines considering both \r\n and \n line breaks
-        const lines = csvText.trim().split(/\r?\n/);    // Get headers and trim them
-        let headers = lines[0].split(delimiter).map(h => h.trim());  // If only one header is detected, try switching the delimiter to tab
-        if (headers.length === 1) {      // If only one header is detected, try switching the delimiter to tab
-            delimiter = "\t";
-            headers = lines[0].split(delimiter).map(h => h.trim());
+    // Updated CSV parser (handles BOM, different delimiters, and extra spaces)
+    function parseCSV(csvText) {
+      csvText = csvText.replace(/^\uFEFF/, '');
+      let delimiter = csvText.indexOf("\t") > -1 ? "\t" : ",";
+      const lines = csvText.trim().split(/\r\n|\n|\r/);
+      let headers = lines[0].split(delimiter).map(h => h.trim());
+      if (headers.length === 1) {
+        delimiter = "\t";
+        headers = lines[0].split(delimiter).map(h => h.trim());
+      }
+      console.log("Detected delimiter:", delimiter, "Headers:", headers);
+      const data = [];
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        const cols = line.split(delimiter).map(c => c.trim());
+        if (cols.length < headers.length) {
+          console.warn(`Skipping row ${i}:`, line);
+          continue;
         }
-        console.log("Detected delimiter:", delimiter, "Headers:", headers); // Log headers to help debug any issues
-        const data = [];
-        for (let i = 1; i < lines.length; i++) {
-            if (!lines[i].trim()) continue;
-            const cols = lines[i].split(delimiter).map(c => c.trim());
-            let row = {};
-            headers.forEach((h, index) => {
-                row[h] = cols[index];
-            });
-            data.push(row);
-        }
-        return data;
+        let row = {};
+        headers.forEach((h, index) => {
+          row[h] = cols[index];
+        });
+        data.push(row);
+      }
+      console.log("Parsed data:", data);
+      return data;
     }
-
-
     
     // Helper functions for overs conversion (bowling)
     function oversToBalls(oversStr) {
-      // oversStr may be like "3.2" (3 overs and 2 balls)
       if(oversStr.indexOf('.') === -1) {
         return parseInt(oversStr) * 6;
       }
@@ -252,36 +250,143 @@
       return overs + "." + rem;
     }
     
-    // Sorting functions for each category
+    // Helper: Transform batting row to normalized keys
+    function transformBattingData(row) {
+      return {
+        "Batsman": row["Batsmen"] || row["Batsman"] || "",
+        "Runs": row["runs scored"] || row["Runs"] || "",
+        "Balls Faced": row["Balls"] || row["Balls Faced"] || "",
+        "Sixes": row["6's"] || row["Sixes"] || "",
+        "Fours": row["4's"] || row["Fours"] || "",
+        "Singles": row["1's"] || row["Singles"] || "",
+        "Strike Rate": row["Strike rate"] || row["Strike Rate"] || "",
+        "Batting Average": row["Average"] || row["Batting Average"] || "",
+        "Dismissals": row["dismissed"] || row["Dismissals"] || "",
+        "Highest Score": row["HS"] || row["Highest Score"] || "",
+        "50/100": row["50/100s"] || row["50/100"] || ""
+      };
+    }
+    
+    // Sorting functions
     function sortBatting(data) {
-      return data.sort((a, b) => parseFloat(b["Runs"]) - parseFloat(a["Runs"]));
+      return data.sort((a, b) => parseFloat(b["Runs"] || 0) - parseFloat(a["Runs"] || 0));
     }
-    
     function sortBowling(data) {
-      return data.sort((a, b) => parseFloat(b["Wickets"]) - parseFloat(a["Wickets"]));
+      // Use key "Wickets" or "wickets" (case-insensitive)
+      const key = data[0].hasOwnProperty("Wickets") ? "Wickets" : "wickets";
+      return data.sort((a, b) => parseFloat(b[key] || 0) - parseFloat(a[key] || 0));
     }
-    
     function sortMVP(data) {
-      return data.sort((a, b) => parseFloat(b["MVP Points"]) - parseFloat(a["MVP Points"]));
+      return data.sort((a, b) => parseFloat(b["MVP Points"] || 0) - parseFloat(a["MVP Points"] || 0));
     }
     
-    // Load weekly data (for thisWeek or lastWeek) for a given category from Firebase
+    // Dynamic table rendering functions with cap icons
+    function renderBattingTable(data) {
+      if (data.length === 0) {
+        document.getElementById("tableContainer").innerHTML = "<p>No records available</p>";
+        return;
+      }
+      const headers = Object.keys(data[0]).filter(key => key.trim() !== "");
+      let html = `<table>
+        <thead>
+          <tr>`;
+      headers.forEach(header => {
+        html += `<th>${header}</th>`;
+      });
+      html += `</tr>
+        </thead>
+        <tbody>`;
+      data.forEach((row, index) => {
+        html += `<tr>`;
+        headers.forEach(header => {
+          // For the top batsman, add an orange cap icon next to the name.
+          if(header.toLowerCase() === "batsman" && index === 0) {
+            html += `<td>${row[header]} <img src="orange_cap.png" alt="Orange Cap" style="width:20px;vertical-align:middle;"></td>`;
+          } else {
+            html += `<td>${row[header]}</td>`;
+          }
+        });
+        html += `</tr>`;
+      });
+      html += `</tbody></table>`;
+      document.getElementById("tableContainer").innerHTML = html;
+    }
+    
+    function renderBowlingTable(data) {
+      if (data.length === 0) {
+        document.getElementById("tableContainer").innerHTML = "<p>No records available</p>";
+        return;
+      }
+      const headers = Object.keys(data[0]).filter(key => key.trim() !== "");
+      let html = `<table>
+        <thead>
+          <tr>`;
+      headers.forEach(header => {
+        html += `<th>${header}</th>`;
+      });
+      html += `</tr>
+        </thead>
+        <tbody>`;
+      data.forEach((row, index) => {
+        html += `<tr>`;
+        headers.forEach(header => {
+          // For the top bowler, add a purple cap icon next to the name.
+          if(header.toLowerCase() === "bowler" && index === 0) {
+            html += `<td>${row[header]} <img src="purple_cap.png" alt="Purple Cap" style="width:20px;vertical-align:middle;"></td>`;
+          } else {
+            html += `<td>${row[header]}</td>`;
+          }
+        });
+        html += `</tr>`;
+      });
+      html += `</tbody></table>`;
+      document.getElementById("tableContainer").innerHTML = html;
+    }
+    
+    function renderMVPTable(data) {
+      if (data.length === 0) {
+        document.getElementById("tableContainer").innerHTML = "<p>No records available</p>";
+        return;
+      }
+      const headers = Object.keys(data[0]).filter(key => key.trim() !== "");
+      let html = `<table>
+        <thead>
+          <tr>`;
+      headers.forEach(header => {
+        html += `<th>${header}</th>`;
+      });
+      html += `</tr>
+        </thead>
+        <tbody>`;
+      data.forEach(row => {
+        html += `<tr>`;
+        headers.forEach(header => {
+          html += `<td>${row[header]}</td>`;
+        });
+        html += `</tr>`;
+      });
+      html += `</tbody></table>`;
+      document.getElementById("tableContainer").innerHTML = html;
+    }
+    
+    // Load weekly data from Firebase for a given category (batting, bowling, mvp)
     function loadWeeklyData(weekType, category) {
       db.ref("records/" + weekType + "/" + category).once("value", snapshot => {
         if(snapshot.exists()){
           const fileContent = snapshot.val();
-          // Expecting fileContent to be CSV text
-          const data = parseCSV(fileContent);
-          let sortedData = data;
+          let data = parseCSV(fileContent);
           if(category==="batting") {
-            sortedData = sortBatting(data);
-            renderBattingTable(sortedData);
+            // Transform batting data to normalized keys
+            data = data.map(transformBattingData);
+            data = sortBatting(data);
+            renderBattingTable(data);
           } else if(category==="bowling") {
-            sortedData = sortBowling(data);
-            renderBowlingTable(sortedData);
+            // For weekly bowling, use dynamic rendering and sort by wickets
+            data = sortBowling(data);
+            renderBowlingTable(data);
           } else if(category==="mvp") {
-            sortedData = sortMVP(data);
-            renderMVPTable(sortedData);
+            data = sortMVP(data);
+            renderMVPTable(data);
           }
         } else {
           document.getElementById("tableContainer").innerHTML = "<p>No records found for " + weekType + " (" + category + ")</p>";
@@ -295,47 +400,43 @@
         if(snapshot.exists()){
           const weeks = snapshot.val();
           let allData = [];
-          // Iterate each week and parse the category data if exists
           Object.keys(weeks).forEach(weekKey => {
             if(weeks[weekKey][category]) {
               const weekData = parseCSV(weeks[weekKey][category]);
               allData = allData.concat(weekData);
             }
           });
-          // Aggregate by name
           if(category==="batting") {
             const aggregated = {};
             allData.forEach(row => {
-              const name = row["Batsman"];
+              const rowT = transformBattingData(row);
+              const name = rowT["Batsman"];
               if(!aggregated[name]) {
-                aggregated[name] = { ...row };
-                // Convert numeric fields
-                aggregated[name]["Runs"] = parseFloat(row["Runs"]) || 0;
-                aggregated[name]["Balls Faced"] = parseFloat(row["Balls Faced"]) || 0;
-                aggregated[name]["Sixes"] = parseFloat(row["Sixes"]) || 0;
-                aggregated[name]["Fours"] = parseFloat(row["Fours"]) || 0;
-                aggregated[name]["Singles"] = parseFloat(row["Singles"]) || 0;
-                aggregated[name]["Dismissals"] = parseFloat(row["Dismissals"]) || 0;
-                aggregated[name]["50/100"] = parseFloat(row["50/100"]) || 0;
-                aggregated[name]["Highest Score"] = parseFloat(row["Highest Score"]) || 0;
+                aggregated[name] = { ...rowT };
+                aggregated[name]["Runs"] = parseFloat(rowT["Runs"]) || 0;
+                aggregated[name]["Balls Faced"] = parseFloat(rowT["Balls Faced"]) || 0;
+                aggregated[name]["Sixes"] = parseFloat(rowT["Sixes"]) || 0;
+                aggregated[name]["Fours"] = parseFloat(rowT["Fours"]) || 0;
+                aggregated[name]["Singles"] = parseFloat(rowT["Singles"]) || 0;
+                aggregated[name]["Dismissals"] = parseFloat(rowT["Dismissals"]) || 0;
+                aggregated[name]["50/100"] = parseFloat(rowT["50/100"]) || 0;
+                aggregated[name]["Highest Score"] = parseFloat(rowT["Highest Score"]) || 0;
               } else {
-                aggregated[name]["Runs"] += parseFloat(row["Runs"]) || 0;
-                aggregated[name]["Balls Faced"] += parseFloat(row["Balls Faced"]) || 0;
-                aggregated[name]["Sixes"] += parseFloat(row["Sixes"]) || 0;
-                aggregated[name]["Fours"] += parseFloat(row["Fours"]) || 0;
-                aggregated[name]["Singles"] += parseFloat(row["Singles"]) || 0;
-                aggregated[name]["Dismissals"] += parseFloat(row["Dismissals"]) || 0;
-                aggregated[name]["50/100"] += parseFloat(row["50/100"]) || 0;
-                aggregated[name]["Highest Score"] = Math.max(aggregated[name]["Highest Score"], parseFloat(row["Highest Score"]) || 0);
+                aggregated[name]["Runs"] += parseFloat(rowT["Runs"]) || 0;
+                aggregated[name]["Balls Faced"] += parseFloat(rowT["Balls Faced"]) || 0;
+                aggregated[name]["Sixes"] += parseFloat(rowT["Sixes"]) || 0;
+                aggregated[name]["Fours"] += parseFloat(rowT["Fours"]) || 0;
+                aggregated[name]["Singles"] += parseFloat(rowT["Singles"]) || 0;
+                aggregated[name]["Dismissals"] += parseFloat(rowT["Dismissals"]) || 0;
+                aggregated[name]["50/100"] += parseFloat(rowT["50/100"]) || 0;
+                aggregated[name]["Highest Score"] = Math.max(aggregated[name]["Highest Score"], parseFloat(rowT["Highest Score"]) || 0);
               }
             });
-            // Recalculate strike rate and average
             const result = [];
             Object.keys(aggregated).forEach(name => {
               const rec = aggregated[name];
               rec["Strike Rate"] = rec["Balls Faced"] > 0 ? (rec["Runs"] / rec["Balls Faced"] * 100).toFixed(2) : "0";
               rec["Batting Average"] = rec["Dismissals"] > 0 ? (rec["Runs"] / rec["Dismissals"]).toFixed(2) : "NA";
-              rec["Batsman"] = name;
               result.push(rec);
             });
             const sorted = sortBatting(result);
@@ -343,37 +444,50 @@
           } else if(category==="bowling") {
             const aggregated = {};
             allData.forEach(row => {
-              const name = row["Bowler"];
+              // Normalize keys using lower-case checks
+              const name = row["Bowler"] || "";
               if(!aggregated[name]) {
-                aggregated[name] = { ...row };
-                aggregated[name]["Overs"] = oversToBalls(row["Overs"] || "0");
-                aggregated[name]["6s Conceded"] = parseFloat(row["6s Conceded"]) || 0;
-                aggregated[name]["4s Conceded"] = parseFloat(row["4s Conceded"]) || 0;
-                aggregated[name]["Runs Conceded"] = parseFloat(row["Runs Conceded"]) || 0;
-                aggregated[name]["Wickets"] = parseFloat(row["Wickets"]) || 0;
+                aggregated[name] = {
+                  "Bowler": name,
+                  "Wickets": parseFloat(row["wickets"] || row["Wickets"] || 0),
+                  "OversBalls": oversToBalls(row["overs"] || row["Overs"] || "0"),
+                  "Runs Conceded": parseFloat(row["runs conceded"] || row["Runs Conceded"] || 0),
+                  "6s Conceded": parseFloat(row["6's conceded"] || row["6s Conceded"] || 0),
+                  "4s Conceded": parseFloat(row["4's conceded"] || row["4s Conceded"] || 0),
+                  "1s Conceded": parseFloat(row["1's conceded"] || row["1s Conceded"] || 0),
+                  "Dots": parseFloat(row["Dots"] || 0),
+                  "Maiden": parseFloat(row["Maiden"] || 0),
+                  "Balls": parseFloat(row["Balls"] || 0)
+                };
               } else {
-                aggregated[name]["Overs"] += oversToBalls(row["Overs"] || "0");
-                aggregated[name]["6s Conceded"] += parseFloat(row["6s Conceded"]) || 0;
-                aggregated[name]["4s Conceded"] += parseFloat(row["4s Conceded"]) || 0;
-                aggregated[name]["Runs Conceded"] += parseFloat(row["Runs Conceded"]) || 0;
-                aggregated[name]["Wickets"] += parseFloat(row["Wickets"]) || 0;
+                aggregated[name]["Wickets"] += parseFloat(row["wickets"] || row["Wickets"] || 0);
+                aggregated[name]["OversBalls"] += oversToBalls(row["overs"] || row["Overs"] || "0");
+                aggregated[name]["Runs Conceded"] += parseFloat(row["runs conceded"] || row["Runs Conceded"] || 0);
+                aggregated[name]["6s Conceded"] += parseFloat(row["6's conceded"] || row["6s Conceded"] || 0);
+                aggregated[name]["4s Conceded"] += parseFloat(row["4's conceded"] || row["4s Conceded"] || 0);
+                aggregated[name]["1s Conceded"] += parseFloat(row["1's conceded"] || row["1s Conceded"] || 0);
+                aggregated[name]["Dots"] += parseFloat(row["Dots"] || 0);
+                aggregated[name]["Maiden"] += parseFloat(row["Maiden"] || 0);
+                aggregated[name]["Balls"] += parseFloat(row["Balls"] || 0);
               }
             });
             const result = [];
             Object.keys(aggregated).forEach(name => {
               const rec = aggregated[name];
-              // Convert total balls back to overs format
-              rec["Overs"] = ballsToOvers(rec["Overs"]);
-              rec["Bowler"] = name;
+              rec["Overs"] = ballsToOvers(rec["OversBalls"]);
+              rec["Economy"] = rec["OversBalls"] > 0 ? (rec["Runs Conceded"] * 6 / rec["OversBalls"]).toFixed(2) : "0";
+              rec["Average"] = rec["Wickets"] > 0 ? (rec["Runs Conceded"] / rec["Wickets"]).toFixed(2) : "NA";
+              delete rec["OversBalls"];
               result.push(rec);
             });
-            const sorted = sortBowling(result);
+            // Sort by wickets descending
+            const sorted = result.sort((a, b) => parseFloat(b["Wickets"] || 0) - parseFloat(a["Wickets"] || 0));
             renderBowlingTable(sorted);
           } else if(category==="mvp") {
             const aggregated = {};
             allData.forEach(row => {
               const name = row["Name"];
-              if(!aggregated[name]) {
+              if(!aggregated[name]){
                 aggregated[name] = { ...row };
                 aggregated[name]["Catches"] = parseFloat(row["Catches"]) || 0;
                 aggregated[name]["MVP Points"] = parseFloat(row["MVP Points"]) || 0;
@@ -384,9 +498,7 @@
             });
             const result = [];
             Object.keys(aggregated).forEach(name => {
-              const rec = aggregated[name];
-              rec["Name"] = name;
-              result.push(rec);
+              result.push(aggregated[name]);
             });
             const sorted = sortMVP(result);
             renderMVPTable(sorted);
@@ -397,92 +509,6 @@
       });
     }
     
-    // Rendering functions for each table
-    function renderBattingTable(data) {
-      let html = `<table>
-        <thead>
-          <tr>
-            <th>Batsman</th>
-            <th>Runs</th>
-            <th>Balls Faced</th>
-            <th>Sixes</th>
-            <th>Fours</th>
-            <th>Singles</th>
-            <th>Strike Rate</th>
-            <th>Batting Average</th>
-            <th>Dismissals</th>
-            <th>Highest Score</th>
-            <th>50/100</th>
-          </tr>
-        </thead>
-        <tbody>`;
-      data.forEach(row => {
-        html += `<tr>
-          <td>${row["Batsman"]}</td>
-          <td>${row["Runs"]}</td>
-          <td>${row["Balls Faced"]}</td>
-          <td>${row["Sixes"]}</td>
-          <td>${row["Fours"]}</td>
-          <td>${row["Singles"]}</td>
-          <td>${row["Strike Rate"]}</td>
-          <td>${row["Batting Average"]}</td>
-          <td>${row["Dismissals"]}</td>
-          <td>${row["Highest Score"]}</td>
-          <td>${row["50/100"]}</td>
-        </tr>`;
-      });
-      html += `</tbody></table>`;
-      document.getElementById("tableContainer").innerHTML = html;
-    }
-    
-    function renderBowlingTable(data) {
-        if (data.length === 0) {
-            document.getElementById("tableContainer").innerHTML = "<p>No records available</p>";
-            return;
-        }
-        const headers = Object.keys(data[0]).filter(key => key.trim() !== "");
-        let html = `<table>
-            <thead>
-                <tr>`;
-                    headers.forEach(header => {
-                        html += `<th>${header}</th>`;
-                    });
-                    html += `</tr>
-                     </thead>
-                     <tbody>`;
-                        data.forEach(row => {
-                            html += `<tr>`;
-                                headers.forEach(header => {
-                                    html += `<td>${row[header]}</td>`;
-                                });
-                                html += `</tr>`;
-                            });
-                            html += `</tbody></table>`;
-                            document.getElementById("tableContainer").innerHTML = html;
-                        }
-
-    
-    function renderMVPTable(data) {
-      let html = `<table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Catches</th>
-            <th>MVP Points</th>
-          </tr>
-        </thead>
-        <tbody>`;
-      data.forEach(row => {
-        html += `<tr>
-          <td>${row["Name"]}</td>
-          <td>${row["Catches"]}</td>
-          <td>${row["MVP Points"]}</td>
-        </tr>`;
-      });
-      html += `</tbody></table>`;
-      document.getElementById("tableContainer").innerHTML = html;
-    }
-    
     // File upload & parsing (supports CSV and Excel)
     function uploadData() {
       const fileInput = document.getElementById("fileInput");
@@ -491,24 +517,20 @@
         alert("Please select a file first.");
         return;
       }
-      const weekType = document.getElementById("weekType").value; // thisWeek or lastWeek
-      const category = document.getElementById("category").value; // batting, bowling, mvp
-      
+      const weekType = document.getElementById("weekType").value;
+      const category = document.getElementById("category").value;
       const reader = new FileReader();
       reader.onload = function(event) {
         let fileContent = event.target.result;
-        // If Excel file, parse using SheetJS and convert first sheet to CSV
         if(file.name.endsWith(".xlsx")) {
           const workbook = XLSX.read(fileContent, {type: 'binary'});
           const firstSheet = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheet];
           fileContent = XLSX.utils.sheet_to_csv(worksheet);
         }
-        // Save to Firebase under records/<weekType>/<category>
         db.ref("records/" + weekType + "/" + category).set(fileContent)
           .then(() => {
             alert("Data uploaded successfully to " + weekType + " (" + category + ")");
-            // Also push this week’s record to allWeeks for total aggregation (using current timestamp as key)
             const timestamp = Date.now();
             db.ref("records/allWeeks/" + timestamp + "/" + category).set(fileContent);
           })
@@ -517,7 +539,6 @@
             alert("Error uploading data: " + error.message);
           });
       };
-      // Read file as binary string for Excel; for CSV, text is fine.
       if(file.name.endsWith(".xlsx")){
         reader.readAsBinaryString(file);
       } else {
@@ -525,7 +546,6 @@
       }
     }
     
-    // On initial load, show default view
     document.addEventListener("DOMContentLoaded", function(){
       showMainView(currentWeekType);
     });
@@ -533,17 +553,12 @@
   
   <!--
     Instructions for Use:
-    1. As an admin, click "Admin Login" and enter the password ("cricket123") to reveal the upload section.
-    2. Select the week type (This Week or Last Week) and the category (Batting, Bowling, or MVP).
-    3. Choose your weekly Excel or CSV file (the file should only contain that week’s performance).
-    4. Click "Upload". The file will be saved under the chosen week/category and also archived in the overall records for Total view.
-    5. Visitors can navigate using the main buttons ("Last Week's Records", "This Week's Records", "Total") and then choose the category via the sub-buttons.
-    6. In the Total view, the site automatically aggregates weekly records and sorts:
-         - Batting by Runs (descending), recalculates Strike Rate and Batting Average.
-         - Bowling by Wickets (descending), adding overs using proper conversion.
-         - MVP by Points (descending).
-    
-    Customize the background image URL and other styles as desired to give it a more “crickety” feel.
+    1. Admin Login: Click "Admin Login" and enter "cricket123" to show the upload section.
+    2. Upload: Choose the week type and category, then upload a CSV/Excel file.
+    3. Weekly View: Navigate using "Last Week's Records" or "This Week's Records". The tables are built dynamically showing all CSV fields.
+    4. Total View: Weekly files are aggregated. For batting and bowling, key stats are summed and recalculated (including extra bowling fields). 
+       • In batting tables, the top batsman's name gets an orange cap icon.
+       • In bowling tables, the top bowler's name gets a purple cap icon.
   -->
 </body>
 </html>
