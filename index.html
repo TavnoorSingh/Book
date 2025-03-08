@@ -209,21 +209,23 @@
     }
     
     // Helper function: parse CSV text into array of objects (assumes header row)
-    function parseCSV(csvText) {
-      const lines = csvText.trim().split("\n");
-      const headers = lines[0].split(",").map(h => h.trim());
-      const data = [];
-      for (let i = 1; i < lines.length; i++) {
-        if(!lines[i].trim()) continue;
-        const cols = lines[i].split(",").map(c => c.trim());
-        const row = {};
-        headers.forEach((h, index) => {
-          row[h] = cols[index];
-        });
-        data.push(row);
-      }
-      return data;
+    function parseCSV(csvText) { // Detect delimiter: if the header row contains a tab, use "\t", otherwise use ","
+        const delimiter = csvText.indexOf("\t") > -1 ? "\t" : ",";
+        const lines = csvText.trim().split("\n");
+        const headers = lines[0].split(delimiter).map(h => h.trim());
+        const data = [];
+        for (let i = 1; i < lines.length; i++) {
+            if (!lines[i].trim()) continue;
+            const cols = lines[i].split(delimiter).map(c => c.trim());
+            const row = {};
+            headers.forEach((h, index) => {
+                row[h] = cols[index];
+            });
+            data.push(row);
+        }
+        return data;
     }
+
     
     // Helper functions for overs conversion (bowling)
     function oversToBalls(oversStr) {
