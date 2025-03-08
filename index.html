@@ -436,31 +436,31 @@
     }
     
     function renderBowlingTable(data) {
-      let html = `<table>
-        <thead>
-          <tr>
-            <th>Bowler</th>
-            <th>Overs</th>
-            <th>6s Conceded</th>
-            <th>4s Conceded</th>
-            <th>Runs Conceded</th>
-            <th>Wickets</th>
-          </tr>
-        </thead>
-        <tbody>`;
-      data.forEach(row => {
-        html += `<tr>
-          <td>${row["Bowler"]}</td>
-          <td>${row["Overs"]}</td>
-          <td>${row["6s Conceded"]}</td>
-          <td>${row["4s Conceded"]}</td>
-          <td>${row["Runs Conceded"]}</td>
-          <td>${row["Wickets"]}</td>
-        </tr>`;
-      });
-      html += `</tbody></table>`;
-      document.getElementById("tableContainer").innerHTML = html;
-    }
+        if (data.length === 0) {
+            document.getElementById("tableContainer").innerHTML = "<p>No records available</p>";
+            return;
+        }
+        const headers = Object.keys(data[0]).filter(key => key.trim() !== "");
+        let html = `<table>
+            <thead>
+                <tr>`;
+                    headers.forEach(header => {
+                        html += `<th>${header}</th>`;
+                    });
+                    html += `</tr>
+                     </thead>
+                     <tbody>`;
+                        data.forEach(row => {
+                            html += `<tr>`;
+                                headers.forEach(header => {
+                                    html += `<td>${row[header]}</td>`;
+                                });
+                                html += `</tr>`;
+                            });
+                            html += `</tbody></table>`;
+                            document.getElementById("tableContainer").innerHTML = html;
+                        }
+
     
     function renderMVPTable(data) {
       let html = `<table>
